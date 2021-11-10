@@ -6,6 +6,8 @@
 use std::ffi::{CStr, CString};
 mod bindings;
 
+const SEGMENT_SIZE: usize = 1024 * 1024 * 1024; 
+
 pub struct NbdExtentCallback {
     callback: bindings::nbd_extent_callback,
 }
@@ -37,6 +39,20 @@ impl NbdHandle {
             return s;
         }
     }
+
+    pub fn block_status(&mut self, count: u64, offset: u64, cb: NbdExtentCallback) {
+        unsafe {
+            let r = bindings::nbd_block_status(self.handle, count, offset, cb.callback, 0);
+        }
+    }
+}
+
+extern "C" fn callback(userdata: std::ffi::c_void, metacontext: &std::ffi::CStr, offset: u64, entries: *mut u32, err: i32) {
+    println!("userdata: {:?}", userdata);
+    println!("metacontext: {:?}", metacontext);
+    println!("offset: {}", offset);
+    println!("entries: {:?}", entries);
+    println!("err: {}", err);
 }
 
 #[cfg(test)]
@@ -56,6 +72,7 @@ mod test {
         let mut handle = NbdHandle::create();
         let uri = "nbd://localhost:10809";
         handle.connect_uri(uri);
+        handle.block_status(count, offset, cb)
         assert_eq!(handle.get_size(), 10485760);
     }
 }
