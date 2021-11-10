@@ -3,10 +3,12 @@
 #![allow(non_snake_case)]
 #![allow(unused)]
 
+use bindings::nbd_extent_callback;
+use libc::c_void;
 use std::ffi::{CStr, CString};
 mod bindings;
 
-const SEGMENT_SIZE: usize = 1024 * 1024 * 1024; 
+const SEGMENT_SIZE: usize = 1024 * 1024 * 1024;
 
 pub struct NbdExtentCallback {
     callback: bindings::nbd_extent_callback,
@@ -24,11 +26,18 @@ impl NbdHandle {
         }
     }
 
+    pub fn add_meta_context(&mut self, context: &str) {
+        unsafe {
+            let uri = CString::new(context).unwrap();
+            bindings::nbd_add_meta_context(self.handle, uri.as_ptr());
+        }
+    }
+
     pub fn connect_uri(&mut self, uri: &str) {
         unsafe {
             let uri = CString::new(uri).unwrap();
             let r = bindings::nbd_connect_uri(self.handle, uri.as_ptr());
-            println!("rc: {}", r);
+            // TODO handle return code
         }
     }
 
@@ -40,19 +49,35 @@ impl NbdHandle {
         }
     }
 
-    pub fn block_status(&mut self, count: u64, offset: u64, cb: NbdExtentCallback) {
+    pub fn block_status(&mut self, count: u64, offset: u64, cb: nbd_extent_callback) -> i32 {
         unsafe {
-            let r = bindings::nbd_block_status(self.handle, count, offset, cb.callback, 0);
+            let r = bindings::nbd_block_status(self.handle, count, offset, cb, 0);
+            println!("block_status rc: {:?}", r);
+            return r;
         }
     }
 }
 
-extern "C" fn callback(userdata: std::ffi::c_void, metacontext: &std::ffi::CStr, offset: u64, entries: *mut u32, err: i32) {
-    println!("userdata: {:?}", userdata);
+unsafe extern "C" fn callback(
+    user_data: *mut ::std::os::raw::c_void,
+    metacontext: *const ::std::os::raw::c_char,
+    offset: u64,
+    entries: *mut u32,
+    nr_entries: bindings::size_t,
+    error: *mut ::std::os::raw::c_int,
+) -> i32 {
+    println!("block status callback");
+    println!("userdata: {:?}", user_data);
     println!("metacontext: {:?}", metacontext);
     println!("offset: {}", offset);
     println!("entries: {:?}", entries);
-    println!("err: {}", err);
+    println!("nr_entries: {:?}", nr_entries);
+    println!("err: {:?}", error);
+    return *error;
+}
+
+unsafe extern "C" fn free_callback(user_data: *mut ::std::os::raw::c_void) {
+    println!("free_callback: {:?}", user_data);
 }
 
 #[cfg(test)]
@@ -71,8 +96,18 @@ mod test {
         // }
         let mut handle = NbdHandle::create();
         let uri = "nbd://localhost:10809";
+        handle.add_meta_context("base:allocation");
         handle.connect_uri(uri);
-        handle.block_status(count, offset, cb)
-        assert_eq!(handle.get_size(), 10485760);
+        let cb = nbd_extent_callback {
+            callback: Some(callback),
+            user_data: 10 as *mut c_void,
+            free: Some(free_callback),
+        };
+
+        let block_status = handle.block_status(1000, 1, cb);
+        println!("block status: {:?}", block_status);
+
+        // based on fedora cloud qcow2
+        assert_eq!(handle.get_size(), 5368709120);
     }
 }
