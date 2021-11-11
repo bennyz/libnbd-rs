@@ -10,6 +10,12 @@ struct ExtentCallbackData<'a> {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        println!("Usage: ./map <uri>");
+        return;
+    }
+
     let uri = &args[1];
 
     let mut h = libnbd_rs::NbdHandle::create();

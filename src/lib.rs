@@ -26,32 +26,26 @@ impl NbdHandle {
         }
     }
 
-    pub fn add_meta_context(&mut self, context: &str) {
+    pub fn add_meta_context(&mut self, context: &str) -> i32 {
         unsafe {
             let uri = CString::new(context).unwrap();
-            bindings::nbd_add_meta_context(self.handle, uri.as_ptr());
+            bindings::nbd_add_meta_context(self.handle, uri.as_ptr())
         }
     }
 
-    pub fn connect_uri(&mut self, uri: &str) {
+    pub fn connect_uri(&mut self, uri: &str) -> i32 {
         unsafe {
             let uri = CString::new(uri).unwrap();
-            let r = bindings::nbd_connect_uri(self.handle, uri.as_ptr());
+            bindings::nbd_connect_uri(self.handle, uri.as_ptr())
         }
     }
 
     pub fn get_size(&mut self) -> i64 {
-        unsafe {
-            let s = bindings::nbd_get_size(self.handle);
-            return s;
-        }
+        unsafe { bindings::nbd_get_size(self.handle) }
     }
 
     pub fn block_status(&mut self, count: u64, offset: u64, cb: nbd_extent_callback) -> i32 {
-        unsafe {
-            let r = bindings::nbd_block_status(self.handle, count, offset, cb, 0);
-            return r;
-        }
+        unsafe { bindings::nbd_block_status(self.handle, count, offset, cb, 0) }
     }
 
     pub fn close(&mut self) {
@@ -59,26 +53,6 @@ impl NbdHandle {
             bindings::nbd_close(self.handle);
         }
     }
-}
-
-unsafe extern "C" fn callback(
-    user_data: *mut ::std::os::raw::c_void,
-    metacontext: *const ::std::os::raw::c_char,
-    offset: u64,
-    entries: *mut u32,
-    nr_entries: bindings::size_t,
-    error: *mut ::std::os::raw::c_int,
-) -> i32 {
-    let data = user_data as *mut ExtentCallbackData;
-    (*data).extents += 1;
-    println!("block status callback");
-    println!("userdata: {:?}", *data);
-    println!("metacontext: {:?}", *metacontext);
-    println!("offset: {}", offset);
-    println!("entries: {:?}", entries);
-    println!("nr_entries: {:?}", nr_entries);
-    println!("err: {:?}", *error);
-    return *error;
 }
 
 pub unsafe extern "C" fn free_callback(user_data: *mut ::std::os::raw::c_void) {}
