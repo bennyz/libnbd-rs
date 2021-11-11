@@ -66,18 +66,24 @@ unsafe extern "C" fn callback(
     nr_entries: bindings::size_t,
     error: *mut ::std::os::raw::c_int,
 ) -> i32 {
+    let data = user_data as *mut RustData;
     println!("block status callback");
-    println!("userdata: {:?}", user_data);
-    println!("metacontext: {:?}", metacontext);
+    println!("userdata: {:?}", *data);
+    println!("metacontext: {:?}", *metacontext);
     println!("offset: {}", offset);
     println!("entries: {:?}", entries);
     println!("nr_entries: {:?}", nr_entries);
-    println!("err: {:?}", error);
+    println!("err: {:?}", *error);
     return *error;
 }
 
 unsafe extern "C" fn free_callback(user_data: *mut ::std::os::raw::c_void) {
     println!("free_callback: {:?}", user_data);
+}
+
+#[derive(Debug)]
+struct RustData {
+    my_data: u32,
 }
 
 #[cfg(test)]
@@ -98,9 +104,11 @@ mod test {
         let uri = "nbd://localhost:10809";
         handle.add_meta_context("base:allocation");
         handle.connect_uri(uri);
+        let mut data = RustData { my_data: 0 };
+        let data: *mut c_void = &mut data as *mut RustData as *mut c_void;
         let cb = nbd_extent_callback {
             callback: Some(callback),
-            user_data: 10 as *mut c_void,
+            user_data: data,
             free: Some(free_callback),
         };
 
