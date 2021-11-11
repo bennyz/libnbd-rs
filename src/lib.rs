@@ -4,11 +4,11 @@
 #![allow(unused)]
 
 use bindings::nbd_extent_callback;
-use libc::c_void;
 use std::ffi::{CStr, CString};
-mod bindings;
+pub mod bindings;
 
-const SEGMENT_SIZE: usize = 1024 * 1024 * 1024;
+pub type c_void = libc::c_void;
+pub const SEGMENT_SIZE: usize = 1024 * 1024 * 1024;
 
 pub struct NbdExtentCallback {
     callback: bindings::nbd_extent_callback,
@@ -37,14 +37,12 @@ impl NbdHandle {
         unsafe {
             let uri = CString::new(uri).unwrap();
             let r = bindings::nbd_connect_uri(self.handle, uri.as_ptr());
-            // TODO handle return code
         }
     }
 
     pub fn get_size(&mut self) -> i64 {
         unsafe {
             let s = bindings::nbd_get_size(self.handle);
-            println!("size: {}", s);
             return s;
         }
     }
@@ -52,8 +50,13 @@ impl NbdHandle {
     pub fn block_status(&mut self, count: u64, offset: u64, cb: nbd_extent_callback) -> i32 {
         unsafe {
             let r = bindings::nbd_block_status(self.handle, count, offset, cb, 0);
-            println!("block_status rc: {:?}", r);
             return r;
+        }
+    }
+
+    pub fn close(&mut self) {
+        unsafe {
+            bindings::nbd_close(self.handle);
         }
     }
 }
@@ -66,7 +69,8 @@ unsafe extern "C" fn callback(
     nr_entries: bindings::size_t,
     error: *mut ::std::os::raw::c_int,
 ) -> i32 {
-    let data = user_data as *mut RustData;
+    let data = user_data as *mut ExtentCallbackData;
+    (*data).extents += 1;
     println!("block status callback");
     println!("userdata: {:?}", *data);
     println!("metacontext: {:?}", *metacontext);
@@ -77,13 +81,11 @@ unsafe extern "C" fn callback(
     return *error;
 }
 
-unsafe extern "C" fn free_callback(user_data: *mut ::std::os::raw::c_void) {
-    println!("free_callback: {:?}", user_data);
-}
+pub unsafe extern "C" fn free_callback(user_data: *mut ::std::os::raw::c_void) {}
 
 #[derive(Debug)]
-struct RustData {
-    my_data: u32,
+struct ExtentCallbackData {
+    extents: u64,
 }
 
 #[cfg(test)]
@@ -104,7 +106,6 @@ mod test {
         let uri = "nbd://localhost:10809";
         handle.add_meta_context("base:allocation");
         handle.connect_uri(uri);
-        let mut data = RustData { my_data: 0 };
         let data: *mut c_void = &mut data as *mut RustData as *mut c_void;
         let cb = nbd_extent_callback {
             callback: Some(callback),

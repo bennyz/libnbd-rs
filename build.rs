@@ -1,8 +1,5 @@
 extern crate bindgen;
 
-use std::env;
-use std::path::PathBuf;
-
 fn main() {
     println!("cargo:rustc-link-lib=nbd");
     println!("cargo:rerun-if-changed=wrapper.h");
