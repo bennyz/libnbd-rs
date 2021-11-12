@@ -36,12 +36,13 @@ fn main() {
 
         h.block_status(length.try_into().unwrap(), offset.try_into().unwrap(), cb);
         let mut ext_start = offset;
-        for mut i in 0..data.extents.len() - 1 {
+        let mut i = 0;
+        while i < data.extents.len() - 1 {
             let ext_len = data.extents[i];
             let ext_zero = data.extents[i + 1] & STATE_ZERO == STATE_ZERO;
-            println!("offest={} length={} zero={}", ext_start, ext_len, ext_zero);
-            ext_start += ext_len as i64;
+            println!("offset={} length={} zero={}", ext_start, ext_len, ext_zero);
 
+            ext_start += ext_len as i64;
             i += 2;
         }
 
@@ -61,11 +62,15 @@ unsafe extern "C" fn callback(
 ) -> i32 {
     let c_str: &CStr = CStr::from_ptr(metacontext);
 
+    if *error != 0 {
+        panic!("error {}", *error);
+    }
+
     if c_str.to_str().unwrap() == "base:allocation" {
         let rs_entries = std::slice::from_raw_parts(entries, nr_entries as usize);
         let data = user_data as *mut ExtentCallbackData;
         (*data).extents = Box::from(rs_entries);
     }
 
-    return *error;
+    return 0;
 }

@@ -7,7 +7,7 @@ use bindings::nbd_extent_callback;
 use std::ffi::{CStr, CString};
 pub mod bindings;
 
-pub type c_void = libc::c_void;
+pub type c_void = ::std::os::raw::c_void;
 pub const SEGMENT_SIZE: usize = 1024 * 1024 * 1024;
 
 pub struct NbdExtentCallback {
@@ -55,7 +55,7 @@ impl NbdHandle {
     }
 }
 
-pub unsafe extern "C" fn free_callback(user_data: *mut ::std::os::raw::c_void) {}
+pub unsafe extern "C" fn free_callback(user_data: *mut c_void) {}
 
 #[derive(Debug)]
 struct ExtentCallbackData {
