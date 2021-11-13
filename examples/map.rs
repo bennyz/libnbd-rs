@@ -1,4 +1,7 @@
-use std::{env, ffi::CStr};
+use std::{
+    env,
+    ffi::{CStr, CString},
+};
 
 use libnbd_rs::{bindings::nbd_extent_callback, bindings::LIBNBD_STATE_ZERO as STATE_ZERO, c_void};
 
@@ -66,10 +69,17 @@ unsafe extern "C" fn callback(
         panic!("error {}", *error);
     }
 
-    if c_str.to_str().unwrap() == "base:allocation" {
-        let rs_entries = std::slice::from_raw_parts(entries, nr_entries as usize);
-        let data = user_data as *mut ExtentCallbackData;
-        (*data).extents = Box::from(rs_entries);
+    match c_str.to_str() {
+        Ok(s) => {
+            if s == "base:allocation" {
+                let rs_entries = std::slice::from_raw_parts(entries, nr_entries as usize);
+                let data = user_data as *mut ExtentCallbackData;
+                (*data).extents = Box::from(rs_entries);
+            }
+        }
+        Err(e) => {
+            panic!("something's wrong! error: {}", e);
+        }
     }
 
     return 0;
