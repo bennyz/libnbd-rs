@@ -82,8 +82,11 @@ impl NbdHandle {
                 cmd_ptr.push(c.into_raw());
             }
 
+            cmd_ptr.push(std::ptr::null_mut());
+
             r = bindings::nbd_connect_command(self.handle, cmd_ptr.as_mut_slice().as_mut_ptr());
 
+            cmd_ptr.pop();
             for p in cmd_ptr.iter() {
                 let _ = CString::from_raw(*p);
             }
