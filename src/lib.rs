@@ -81,6 +81,7 @@ impl NbdHandle {
                 let c = CString::new(*c).unwrap();
                 cmd_ptr.push(c.into_raw());
             }
+
             r = bindings::nbd_connect_command(self.handle, cmd_ptr.as_mut_slice().as_mut_ptr());
 
             for p in cmd_ptr.iter() {
@@ -116,7 +117,6 @@ struct ExtentCallbackData {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::ffi::{CStr, CString};
 
     #[test]
     fn test_handle_name() {
