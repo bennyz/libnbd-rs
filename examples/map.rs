@@ -1,7 +1,4 @@
-use std::{
-    env,
-    ffi::{CStr, CString},
-};
+use std::{env, ffi::CStr};
 
 use libnbd_rs::{bindings::nbd_extent_callback, bindings::LIBNBD_STATE_ZERO as STATE_ZERO, c_void};
 
@@ -27,8 +24,7 @@ fn main() {
 
     let size = h.get_size();
 
-    let mut offset = 0;
-    while offset < size {
+    for offset in (0..size).step_by(libnbd_rs::SEGMENT_SIZE as usize) {
         let length = std::cmp::min(size - offset, libnbd_rs::SEGMENT_SIZE as i64);
         let mut data = ExtentCallbackData::default();
         let cb = nbd_extent_callback {
@@ -39,17 +35,13 @@ fn main() {
 
         h.block_status(length.try_into().unwrap(), offset.try_into().unwrap(), cb);
         let mut ext_start = offset;
-        let mut i = 0;
-        while i < data.extents.len() - 1 {
+        for i in (0..data.extents.len() - 1).step_by(2) {
             let ext_len = data.extents[i];
             let ext_zero = data.extents[i + 1] & STATE_ZERO == STATE_ZERO;
             println!("offset={} length={} zero={}", ext_start, ext_len, ext_zero);
 
             ext_start += ext_len as i64;
-            i += 2;
         }
-
-        offset += libnbd_rs::SEGMENT_SIZE as i64;
     }
 
     h.close();
