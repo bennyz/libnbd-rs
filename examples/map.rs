@@ -1,4 +1,7 @@
-use std::{env, ffi::CStr};
+use std::{
+    env,
+    ffi::{CStr, CString},
+};
 
 use libnbd_rs::{bindings::nbd_extent_callback, bindings::LIBNBD_STATE_ZERO as STATE_ZERO, c_void};
 
@@ -56,7 +59,6 @@ unsafe extern "C" fn callback(
     error: *mut ::std::os::raw::c_int,
 ) -> i32 {
     let c_str: &CStr = CStr::from_ptr(metacontext);
-
     if *error != 0 {
         panic!("error {}", *error);
     }

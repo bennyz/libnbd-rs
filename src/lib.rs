@@ -103,6 +103,30 @@ impl NbdHandle {
         unsafe { bindings::nbd_block_status(self.handle, count, offset, cb, 0) }
     }
 
+    pub fn write(&mut self, buf: &mut [u8], count: u64, offset: u64, flags: u32) -> i32 {
+        unsafe {
+            bindings::nbd_pwrite(
+                self.handle,
+                buf.as_ptr() as *const c_void,
+                count,
+                offset,
+                flags,
+            )
+        }
+    }
+
+    pub fn read(&mut self, buf: &mut [u8], count: u64, offset: u64, flags: u32) -> i32 {
+        unsafe {
+            bindings::nbd_pread(
+                self.handle,
+                buf.as_ptr() as *mut c_void,
+                count,
+                offset,
+                flags,
+            )
+        }
+    }
+
     pub fn close(&mut self) {
         unsafe {
             bindings::nbd_close(self.handle);
